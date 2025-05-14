@@ -1,26 +1,36 @@
 import joblib
-import numpy as np
 import pandas as pd
+from datetime import datetime
 
-# Загрузка модели и масштабатора
-model = joblib.load('rain_model_v161.pkl')
-scaler = joblib.load('rain_scaler_v161.pkl')
+# === 1. Загрузка моделей (каждая — полный Pipeline: scaler + модель) ===
+rain_model = joblib.load('best_rain_model_limited.pkl')   # дождь через 6 ч
+temp_model = joblib.load('best_temp_model_limited.pkl')   # температура через 6 ч
 
-# Пример входных данных
-temperature = 4 # температура в °C
-humidity = 0.305     # влажность (в долях, от 0 до 1)
-pressure_mmHg = 752
-pressure_mbar = pressure_mmHg * 1.33322  # перевод в миллибары
-hour = 22  # текущий час
+# === 2. Пример исходных данных ===
+temperature_c = 4.0        # °C
+humidity_frac = 0.305      # относительная влажность (0–1)
+pressure_mmHg = 752        # мм рт. ст.
+ts = datetime(2025, 5, 14, 22, 0)   # текущий момент (можно заменить на now())
 
-# Подготовка признаков
-features = pd.DataFrame([[temperature, humidity, pressure_mbar, hour]],
-                        columns=['Temperature (C)', 'Humidity', 'Pressure (millibars)', 'Hour'])
+# === 3. Фичер-инжениринг в точности как при обучении ===
+humidity_pct = humidity_frac * 100
+hour  = ts.hour            # 0–23
+dow   = ts.weekday()       # 0=Пн … 6=Вс
+month = ts.month           # 1–12
 
-# Масштабирование и предсказание
-features_scaled = scaler.transform(features)
-prediction = model.predict(features_scaled)[0]
-prediction_text = "будет дождь ☔" if prediction == 1 else "дождя не будет 🌤"
+# Формируем датафрейм-строку ровно в том же порядке столбцов,
+# что использовался при обучении моделей
+features = pd.DataFrame(
+    [[temperature_c, humidity_pct, pressure_mmHg, hour, dow, month]],
+    columns=['Temperature (C)', 'HumidityPct', 'Pressure_mmHg', 'hour', 'dow', 'month']
+)
 
-print(prediction_text)
+# === 4. Предсказания ===
+rain_pred = rain_model.predict(features)[0]      # 0 / 1
+temp_pred = temp_model.predict(features)[0]      # °C
+
+rain_text = "будет дождь ☔" if rain_pred == 1 else "дождя не будет 🌤"
+
+print("Прогноз осадков через 6 часов :", rain_text)
+print(f"Прогноз температуры через 6 часов: {temp_pred:.1f} °C")
 
