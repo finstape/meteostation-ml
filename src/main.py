@@ -1,36 +1,40 @@
 import joblib
 import pandas as pd
-from datetime import datetime
 
-# === 1. Загрузка моделей (каждая — полный Pipeline: scaler + модель) ===
-rain_model = joblib.load('best_rain_model_limited.pkl')   # дождь через 6 ч
-temp_model = joblib.load('best_temp_model_limited.pkl')   # температура через 6 ч
+# Загрузка модели и scaler
+model = joblib.load('best_model.pkl')
+scaler = joblib.load('scaler.pkl')
 
-# === 2. Пример исходных данных ===
-temperature_c = 4.0        # °C
-humidity_frac = 0.305      # относительная влажность (0–1)
-pressure_mmHg = 752        # мм рт. ст.
-ts = datetime(2025, 5, 14, 22, 0)   # текущий момент (можно заменить на now())
+# Пример входных данных
+temperature = 12.5  # °C
+humidity = 85.0  # %
+pressure_mmhg = 752.0  # мм рт. ст.
+timestamp = "2024-05-18 14:00"  # строка в формате YYYY-MM-DD HH:MM
 
-# === 3. Фичер-инжениринг в точности как при обучении ===
-humidity_pct = humidity_frac * 100
-hour  = ts.hour            # 0–23
-dow   = ts.weekday()       # 0=Пн … 6=Вс
-month = ts.month           # 1–12
+# Преобразование даты
+dt = pd.to_datetime(timestamp)
+hour = dt.hour
+day = dt.day
+month = dt.month
 
-# Формируем датафрейм-строку ровно в том же порядке столбцов,
-# что использовался при обучении моделей
-features = pd.DataFrame(
-    [[temperature_c, humidity_pct, pressure_mmHg, hour, dow, month]],
-    columns=['Temperature (C)', 'HumidityPct', 'Pressure_mmHg', 'hour', 'dow', 'month']
-)
+# Формирование признаков
+X_input = pd.DataFrame([{
+    'Temperature': temperature,
+    'Humidity': humidity,
+    'Pressure (mmHg)': pressure_mmhg,
+    'Month': month,
+    'Hour': hour,
+    'DayOfMonth': day
+}])
 
-# === 4. Предсказания ===
-rain_pred = rain_model.predict(features)[0]      # 0 / 1
-temp_pred = temp_model.predict(features)[0]      # °C
+# Масштабирование
+X_scaled = scaler.transform(X_input)
 
-rain_text = "будет дождь ☔" if rain_pred == 1 else "дождя не будет 🌤"
+# Предсказание
+y_pred = model.predict(X_scaled)[0]
+predicted_temp = y_pred[0]
+predicted_rain = int(y_pred[1] >= 0.5)
 
-print("Прогноз осадков через 6 часов :", rain_text)
-print(f"Прогноз температуры через 6 часов: {temp_pred:.1f} °C")
-
+# Вывод
+print(f"Температура через 6 часов: {predicted_temp:.1f} °C")
+print(f"Будет ли дождь: {'Да' if predicted_rain else 'Нет'}")
