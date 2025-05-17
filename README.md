@@ -1,6 +1,6 @@
-![Python](https://img.shields.io/badge/-Python-3776AB?style=for-the-badge&logo=python)
-![ML](https://img.shields.io/badge/Machine_Learning-43B02A?style=for-the-badge)
-![Scikit-learn](https://img.shields.io/badge/Scikit--Learn-F7931E?style=for-the-badge&logo=scikitlearn)
+![Python](https://img.shields.io/badge/-Python-black?style=for-the-badge&logo=python)
+![ML](https://img.shields.io/badge/Machine_Learning-grey?style=for-the-badge)
+![Scikit-learn](https://img.shields.io/badge/Scikit--Learn-white?style=for-the-badge&logo=scikitlearn)
 ![License](https://img.shields.io/badge/Apache_2.0-blue.svg?style=for-the-badge)
 
 # Проект: ML-прогноз погоды (умная метеостанция)
@@ -17,6 +17,25 @@
 - [meteostation-backend](https://github.com/finstape/meteostation-backend) — backend-сервер (FastAPI + PostgreSQL)
 - [meteostation-ml](https://github.com/finstape/meteostation-ml) — ML-модель прогнозирования погоды
 
+## Установка зависимостей
+
+Для установки всех необходимых библиотек выполните следующую команду:
+
+```bash
+pip install -r requirements.txt
+```
+
+## Описание датасета
+
+В качестве источника использован открытый погодный датасет города Basel. Данные представлены с шагом 1 час и содержат:
+- температуру воздуха (°C)
+- относительную влажность (%)
+- атмосферное давление (переведено в мм рт. ст.)
+- временную метку (преобразованную в час, день и месяц)
+
+Целевой признак `Target_Rain` был сформирован на основе простой, но разумной эвристики: считается, что дождь вероятен, если через 6 часов наблюдаются **влажность выше 80%** и **давление ниже 755 мм рт. ст.**. Эта эвристика отражает типичное поведение осадков в умеренном климате при приближении циклона
+
+
 ## Описание файлов
 
 | Файл             | Назначение |
@@ -27,19 +46,21 @@
 | `scaler.pkl`     | Масштабатор признаков, использованный при обучении |
 | `main.py`        | Пример использования модели для предсказаний |
 
----
-
 ## Алгоритм
 
 1. Загрузка и округление данных (точность = 1 знак после запятой)
-2. Извлечение признаков времени (час, день, месяц)
+2. Извлечение признаков времени (`Hour`, `DayOfMonth`, `Month`)
 3. Формирование целевых переменных:
-   - температура через 6 часов
-   - факт дождя (эвристика: высокая влажность (> 80%) + пониженное давление ( < 755))
-4. Обучение моделей:
+   - `Target_Temperature` через 6 часов
+   - `Target_Rain` по эвристике (влажность > 80% и давление < 755)
+4. Масштабирование признаков с помощью `StandardScaler` (важно для большинства моделей)
+5. Обучение моделей:
    - KNN, XGBoost, LGBM, CatBoost, Ridge и др.
-5. Сравнение метрик RMSE (регрессия) и F1 (классификация)
-6. Сохранение лучшей модели
+6. Подбор гиперпараметров через `GridSearchCV`
+7. Сравнение по метрикам:
+   - RMSE — для температуры (регрессия)
+   - F1-score — для дождя (бинарная классификация)
+8. Сохранение лучшей модели + scaler
 
 ## Полученные результаты
 
